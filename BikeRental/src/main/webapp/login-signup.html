@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login / Sign-Up</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+        }
+
+        .container {
+            max-width: 600px;
+            margin-top: 50px;
+        }
+
+        .form-container {
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 30px;
+            background-color: white;
+        }
+
+        .toggle-btns button {
+            width: 100%;
+            font-weight: bold;
+        }
+
+        .form-container h2 {
+            margin-bottom: 20px;
+        }
+
+        .alert {
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="form-container">
+            <h2 class="text-center" id="form-title">Login</h2>
+
+            <!-- Toggle Buttons -->
+            <div class="toggle-btns d-flex">
+                <button class="btn btn-primary" id="login-btn" onclick="toggleForm('login')">Login</button>
+                <button class="btn btn-outline-primary ms-2" id="signup-btn" onclick="toggleForm('signup')">Sign-Up</button>
+            </div>
+
+            <!-- Login Form -->
+            <div id="login-form">
+                <form id="loginForm">
+                    <div class="mb-3">
+                        <label for="loginEmail" class="form-label">Email address</label>
+                        <input type="email" class="form-control" id="loginEmail" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="loginPassword" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="loginPassword" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Login</button>
+                    <div id="loginError" class="alert alert-danger mt-3 d-none"></div>
+                </form>
+            </div>
+
+            <!-- Sign-Up Form -->
+            <div id="signup-form" class="d-none">
+                <form id="signupForm">
+                    <div class="mb-3">
+                        <label for="signupName" class="form-label">Full Name</label>
+                        <input type="text" class="form-control" id="signupName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="signupEmail" class="form-label">Email address</label>
+                        <input type="email" class="form-control" id="signupEmail" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="signupPassword" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="signupPassword" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Sign Up</button>
+                    <div id="signupError" class="alert alert-danger mt-3 d-none"></div>
+                </form>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Toggle between Login and Sign-Up Forms
+        function toggleForm(form) {
+            if (form === 'login') {
+                document.getElementById('form-title').innerText = 'Login';
+                document.getElementById('login-form').classList.remove('d-none');
+                document.getElementById('signup-form').classList.add('d-none');
+                document.getElementById('login-btn').classList.add('btn-primary');
+                document.getElementById('login-btn').classList.remove('btn-outline-primary');
+                document.getElementById('signup-btn').classList.add('btn-outline-primary');
+                document.getElementById('signup-btn').classList.remove('btn-primary');
+            } else {
+                document.getElementById('form-title').innerText = 'Sign-Up';
+                document.getElementById('login-form').classList.add('d-none');
+                document.getElementById('signup-form').classList.remove('d-none');
+                document.getElementById('login-btn').classList.add('btn-outline-primary');
+                document.getElementById('login-btn').classList.remove('btn-primary');
+                document.getElementById('signup-btn').classList.add('btn-primary');
+                document.getElementById('signup-btn').classList.remove('btn-outline-primary');
+            }
+        }
+
+        // Handle Login Form Submission
+        document.getElementById('loginForm').addEventListener('submit', function (event) {
+            event.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            fetch('/BikeRental/api/customers/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email, password })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.token) {
+                    localStorage.setItem('token', data.token);
+                    window.location.href = '/BikeRental/bikes.html'; // Redirect to bikes page
+                } else {
+                    document.getElementById('loginError').classList.remove('d-none');
+                    document.getElementById('loginError').textContent = 'Invalid email or password.';
+                }
+            })
+            .catch(error => {
+                console.error(error);
+                document.getElementById('loginError').classList.remove('d-none');
+                document.getElementById('loginError').textContent = 'An error occurred. Please try again.';
+            });
+        });
+
+        // Handle Sign-Up Form Submission
+        document.getElementById('signupForm').addEventListener('submit', function (event) {
+            event.preventDefault();
+            const name = document.getElementById('signupName').value;
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+            
+            fetch('/BikeRental/api/customers/signup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name, email, password })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.id) {
+                    alert('Sign-Up successful! You can now login.');
+                    toggleForm('login');
+                } else {
+                    document.getElementById('signupError').classList.remove('d-none');
+                    document.getElementById('signupError').textContent = 'Error during sign-up. Try again.';
+                }
+            })
+            .catch(error => {
+                console.error(error);
+                document.getElementById('signupError').classList.remove('d-none');
+                document.getElementById('signupError').textContent = 'An error occurred during sign-up.';
+            });
+        });
+    </script>
+
+</body>
+
+</html>
