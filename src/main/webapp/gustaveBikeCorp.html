@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bikes Available for Rent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+        }
+
+        .container {
+            max-width: 800px;
+            margin-top: 50px;
+        }
+
+        header {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+
+        header button {
+            background-color: #dc3545;
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            font-size: 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        header button:hover {
+            background-color: #bd2130;
+        }
+
+        main {
+            margin-top: 80px; /* Space for fixed header */
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Bikes Rental Service</h1>
+        <button onclick="logout()">Logout</button>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="mb-3">
+                <input type="text" class="form-control" id="search-bar" placeholder="Search bikes by name" oninput="searchBikes()">
+            </div>
+            <h1 class="text-center">Bikes Available for Rent</h1>
+            
+            <!-- Currency Converter -->
+            <div id="currency-converter" class="mb-4">
+                <label for="currency-select">Choose your currency:</label>
+                <select id="currency-select" onchange="updatePrices()">
+                    <!-- Options will be dynamically populated -->
+                </select>
+            </div>
+
+            <table class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Condition</th>
+                        <th>Price</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="bike-table-body">
+                    <!-- Bikes will be dynamically loaded here -->
+                </tbody>
+            </table>
+
+            <!-- Basket Section -->
+            <div id="basket-container" class="mt-4">
+                <h3>Your Basket</h3>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Bike Name</th>
+                            <th>Price</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="basket-body">
+                        <!-- Selected bikes will appear here -->
+                    </tbody>
+                </table>
+                <button class="btn btn-success" onclick="purchaseAll()">Purchase All</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let basket = [];
+        let exchangeRates = {}; // To store the fetched exchange rates
+        let defaultCurrency = "EUR"; // Default currency is Euro
+
+        // Fetch bikes and populate the table
+        fetch('http://localhost:8080/rentalBike/api/bikes/allForSale')
+            .then(response => response.json())
+            .then(bikes => bikes.forEach(addBikeToTable))
+            .catch(error => console.error("Failed to load bikes:", error));
+
+        // Fetch exchange rates
+        fetch('https://api.exchangerate-api.com/v4/latest/EUR')
+            .then(response => response.json())
+            .then(data => {
+                exchangeRates = data.rates; // Store rates
+                populateCurrencyDropdown(data.rates);
+            })
+            .catch(error => console.error("Failed to fetch exchange rates:", error));
+
+        // Populate the currency dropdown
+        function populateCurrencyDropdown(rates) {
+            const currencySelect = document.getElementById("currency-select");
+            for (const currency in rates) {
+                const option = document.createElement("option");
+                option.value = currency;
+                option.text = currency;
+                currencySelect.appendChild(option);
+            }
+            currencySelect.value = defaultCurrency; // Set default currency
+        }
+
+        // Add bikes to the table
+        function addBikeToTable(bike) {
+            const bikeTableBody = document.getElementById('bike-table-body');
+            const actionButton = bike.available
+                ? `<button class="btn btn-primary" onclick="addToBasket('${bike.id}', '${bike.id}', ${bike.price})">Add to Basket</button>`
+                : `<button class="btn btn-secondary" disabled>Unavailable</button>`;
+
+            const bikeRow = `
+                <tr>
+                    <td>${bike.id}</td>
+                    <td>${bike.condition}</td>
+                    <td data-price-eur="${bike.price}">${bike.price} EUR</td>
+                    <td>${actionButton}</td>
+                </tr>
+            `;
+            bikeTableBody.innerHTML += bikeRow;
+        }
+
+        // Update prices based on selected currency
+        function updatePrices() {
+            const selectedCurrency = document.getElementById("currency-select").value;
+            const conversionRate = exchangeRates[selectedCurrency];
+            const bikeRows = document.querySelectorAll("#bike-table-body tr");
+
+            bikeRows.forEach(row => {
+                const priceCell = row.querySelector('td:nth-child(3)');
+                const priceInEuro = parseFloat(priceCell.getAttribute("data-price-eur"));
+                const convertedPrice = (priceInEuro * conversionRate).toFixed(2);
+                priceCell.textContent = `${convertedPrice} ${selectedCurrency}`;
+            });
+        }
+
+        
+        
+        
+        // Add to Basket
+        
+       // Assuming exchangeRates is an object that stores exchange rates like { 'USD': 1.05, 'GBP': 0.85, ... }
+
+
+		function conversionRate() {
+    		const selectedCurrency = document.getElementById("currency-select").value;  // Get the selected currency
+    		const rate = exchangeRates[selectedCurrency];  // Get the conversion rate for the selected currency
+    		return rate || 1;  // Return the conversion rate, default to 1 (EUR to EUR) if no rate found
+		}
+
+		function addToBasket(bikeId, bikeName, price) {
+   			if (basket.some(bike => bike.id === bikeId)) {
+        		alert("This bike is already in your basket.");
+        	return;
+    	}
+    
+   			
+    		basket.push({ id: bikeId, name: bikeName, price });
+    		updateBasketUI();
+		}
+
+		
+		// Remove from Basket
+		function removeFromBasket(bikeId) {
+		    basket = basket.filter(bike => bike.id !== bikeId);
+		    updateBasketUI();
+		}
+
+        // Update Basket UI
+        function updateBasketUI() {
+            const basketBody = document.getElementById("basket-body");
+            basketBody.innerHTML = ""; // Clear previous content
+            const rate = conversionRate();  // Get the selected currency rate
+    		  
+    
+            basket.forEach(bike => {
+                const row = `
+                    <tr>
+                        <td>${bike.name}</td>
+                        <td>${(bike.price * rate).toFixed(2)} ${document.getElementById("currency-select").value} </td>
+                        <td>
+                            <button class="btn btn-danger" onclick="removeFromBasket('${bike.id}')">Remove</button>
+                        </td>
+                    </tr>
+                `;
+                basketBody.innerHTML += row;
+            });
+        }
+
+        // Purchase all bikes
+        function purchaseAll() {
+            if (basket.length === 0) {
+                alert("Your basket is empty.");
+                return;
+            }
+            const selectedCurrency = document.getElementById("currency-select").value;
+            const rate = conversionRate()
+            basket.forEach(bike => {
+                purchaseBike(bike.id, (bike.price * rate).toFixed(2), selectedCurrency);
+            });
+            basket = [];
+            updateBasketUI();
+        }
+
+        // Purchase a single bike
+       function purchaseBike(bikeId, price, currency) {
+    const cardNumber = prompt("Enter your credit card number:");
+    if (!cardNumber || cardNumber.length < 12 || cardNumber.length > 16) {
+        alert("Invalid credit card number.");
+        return;
+    }
+
+    // Make payment request
+    fetch(`http://localhost:8080/rentalBike/api/bank/payment?bikeId=${bikeId}&cardNumber=${cardNumber}&amount=${price}&currency=${currency}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // If payment is successful, confirm the purchase
+            fetch(`http://localhost:8080/rentalBike/api/bikes/${bikeId}/purchase`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            })
+            .then(() => {
+                alert(`Purchase successful! You paid ${price} ${currency} for Bike ID: ${bikeId}.`);
+                location.reload();
+            })
+            .catch(error => {
+                console.error("Error confirming purchase:", error);
+                alert("Payment succeeded, but confirming the purchase failed. Please contact support.");
+            });
+        } else {
+            alert("Purchase failed: " + data.message);
+        }
+    })
+    .catch(error => {
+        console.error("Error making payment:", error);
+        alert("Payment failed. Please check your card details or try again later.");
+    });
+}
+
+
+        // Logout function
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/rentalBike/login-signup.html';
+        }
+    </script>
+</body>
+</html>
